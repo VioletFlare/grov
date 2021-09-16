@@ -11,7 +11,7 @@ Launch
 
 Create a `config.js` file in the root directory containing your discord bot credentials.
 
-```
+```js
 module.exports = {
   TOKEN_PROD: "<Your Discord Bot Token Goes Here>"
 }
