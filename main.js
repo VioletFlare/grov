@@ -19,30 +19,26 @@ class GRBot {
     this.emptyVideo = "https://www.youtube.com/watch?v=kvO_nHnvPtQ";
   }
 
-  _connectToVoice(msg) {
+  _connectToVoice(msg, splitCommand) {
     const channelID = msg.member.voice.channelID;
     const channel = client.channels.cache.get(channelID);
 
     if (!channelID) {
-      return msg.channel.send("Per invitarmi entra prima nella voice chat.");
+      return msg.channel.send("To invite me, first enter a voice channel.");
     }
 
     const permissions = channel.permissionsFor(msg.client.user);
     if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
       return msg.channel.send(
-        "Ho bisogno di permessi per connettermi a questa voice chat."
+        "I need permission to enter this voice chat."
       );
     } else if (!channel) {
       return console.error("The channel does not exist!");
     } else {
       channel.join().then(connection => {
-        this.connection = connection;
-        this.connection.play(ytdl(this.emptyVideo,
-        {
-          filter: "audioonly",
-          fmt: "mp3"
-        }))
-        console.log("Successfully connected.");
+        const isShuffle = splitCommand[0] === 'gr/shuffle';
+        this._interceptPlayCommand(msg, splitCommand, isShuffle);
+        console.log("Successfully connected to the voice chat.");
       }).catch(e => {
         console.error(e);
       });
@@ -51,7 +47,7 @@ class GRBot {
   }
 
   _disconnectFromVoice(msg) {
-    if(!msg.guild.me.voice.channel) return msg.channel.send("Non sono in un canale.");
+    if(!msg.guild.me.voice.channel) return msg.channel.send("I am not in a channel.");
 
     msg.guild.me.voice.channel.leave();
   }
@@ -125,45 +121,54 @@ class GRBot {
     return array;
   }
 
-  _startPlaylist(msg, playlistURL, shuffle) {
-    ytpl(playlistURL).then(
-      (playlist) => {
-        console.log(playlist);
-        const queueConstruct = {
-          textChannel: msg.channel,
-          voiceChannel: msg.member.voice.channel,
-          connection: this.connection,
-          songs: [],
-          volume: 5,
-          playing: true,
-        };
-        
-        this.queue.set(msg.guild.id, queueConstruct);
-
-        let playlistItems = playlist.items;
-
-        if (shuffle) {
-          playlistItems = this._shuffle(playlist.items)
-        }
-        
-        for (let item of playlistItems) {
-          queueConstruct.songs.push(item.shortUrl);
-        }
-
-        this.serverQueue = this.queue.get(msg.guild.id);
-        this._play(msg.guild, this.serverQueue.songs[0]);
-      }
-    );
+  _handlePlaylistProvider(msg, playlistURL, shuffle) {
+    if ("youtube") {
+      ytpl(playlistURL).then(
+        (playlist) => this._startPlaylist(playlist, msg, shuffle)
+      );
+    }
   }
 
-  _interceptPlayCommand(splitCommand, msg, shuffle) {
-    let playlist = this.playlists[splitCommand[2]];
+  _startPlaylist(playlist, msg, shuffle) {
+    console.log(playlist);
+    const queueConstruct = {
+      textChannel: msg.channel,
+      voiceChannel: msg.member.voice.channel,
+      connection: this.connection,
+      songs: [],
+      volume: 5,
+      playing: true,
+    };
 
-    if(!msg.guild.me.voice.channel) {
-      msg.channel.send("Non sono in un canale.");
-    } else if (playlist) {
-      this._startPlaylist(msg, playlist, shuffle);
+    this.queue.set(msg.guild.id, queueConstruct);
+
+    let playlistItems = playlist.items;
+
+    if (shuffle) {
+      playlistItems = this._shuffle(playlist.items)
     }
+
+    for (let item of playlistItems) {
+      queueConstruct.songs.push(item.shortUrl);
+    }
+
+    this.serverQueue = this.queue.get(msg.guild.id);
+    this._play(msg.guild, this.serverQueue.songs[0]);
+  }
+
+  _interceptPlayCommand(msg, splitCommand, shuffle) {
+    const URL = splitCommand[1];
+
+    if (URL) {
+      if(!msg.guild.me.voice.channel) {
+        msg.channel.send("I am not in a channel.");
+      } else {
+        this._handlePlaylistProvider(msg, URL, shuffle);
+      }
+    } else {
+      msg.channel.send("You must provide an URL to a song or a playlist.")
+    }
+
   }
 
   _parseCommand(msg) {
@@ -190,14 +195,11 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
     )
     .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
 
-    const splitCommand = content.split("/");
+    const splitCommand = content.split(" ");
 
     if (splitCommand[0].includes(this.prefix)) {
-      switch (splitCommand[1]) {
-        case "join":
-        case "start": 
-          this._connectToVoice(msg);
-        break;
+      const command = splitCommand[0].split("/")[1];
+      switch (command) {
         case "skip":
           this._skip();
         break;
@@ -205,10 +207,10 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
           this._disconnectFromVoice(msg);
         break;
         case "play":
-          this._interceptPlayCommand(splitCommand, msg);
+          this._connectToVoice(msg, splitCommand);
         break;
-        case "shuffle": 
-          this._interceptPlayCommand(splitCommand, msg, true);
+        case "shuffle":
+          this._connectToVoice(msg, splitCommand);
         break;
         case "help":
           msg.reply(embed);
