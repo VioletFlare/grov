@@ -36,6 +36,7 @@ class GRBot {
       return console.error("The channel does not exist!");
     } else {
       channel.join().then(connection => {
+        this.connection = connection;
         const isShuffle = splitCommand[0] === 'gr/shuffle';
         this._interceptPlayCommand(msg, splitCommand, isShuffle);
         console.log("Successfully connected to the voice chat.");
@@ -84,8 +85,8 @@ class GRBot {
       fmt: "mp3"
     });
 
-    if (this.serverQueue.connection) {
-      this.dispatcher = this.serverQueue.connection
+    if (this.connection) {
+      this.dispatcher = this.connection
       .play(stream)
       .on("finish", () => {
           this.serverQueue.songs.shift();
@@ -95,10 +96,10 @@ class GRBot {
 
       this._sendSongTitle(song);
 
-      this.dispatcher.setVolumeLogarithmic(this.serverQueue.volume / 5);
+      this.dispatcher.setVolumeLogarithmic(this.connection.volume / 5);
     } else {
       console.log("Connection is undefined.")
-      this.serverQueue.voiceChannel.leave();
+      this.connection.voiceChannel.leave();
     }
   }
 
@@ -121,11 +122,27 @@ class GRBot {
     return array;
   }
 
-  _handlePlaylistProvider(msg, playlistURL, shuffle) {
-    if ("youtube") {
-      ytpl(playlistURL).then(
-        (playlist) => this._startPlaylist(playlist, msg, shuffle)
-      );
+  _playYoutube(msg, srcURL, shuffle) {
+    ytpl(srcURL).then(
+      (playlist) => this._startPlaylist(playlist, msg, shuffle)
+    ).catch((err) => {
+      if (err.message === 'Mixes not supported') {
+
+      } else {
+        this._play(msg.guild, srcURL)
+      }
+    });
+  }
+
+  _handleProvider(msg, srcURL, shuffle) {
+    const url = new URL(srcURL);
+
+    switch(url.hostname) {
+      case "www.youtube.com":
+        this._playYoutube(msg, srcURL, shuffle)
+        break;
+      case "spotify":
+        break;
     }
   }
 
@@ -134,7 +151,6 @@ class GRBot {
     const queueConstruct = {
       textChannel: msg.channel,
       voiceChannel: msg.member.voice.channel,
-      connection: this.connection,
       songs: [],
       volume: 5,
       playing: true,
@@ -163,7 +179,7 @@ class GRBot {
       if(!msg.guild.me.voice.channel) {
         msg.channel.send("I am not in a channel.");
       } else {
-        this._handlePlaylistProvider(msg, URL, shuffle);
+        this._handleProvider(msg, URL, shuffle);
       }
     } else {
       msg.channel.send("You must provide an URL to a song or a playlist.")
@@ -172,7 +188,6 @@ class GRBot {
   }
 
   _parseCommand(msg) {
-    let content = msg.content.toLowerCase();
     const usage = `
     \`\`\`
 Usage:
@@ -195,10 +210,12 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
     )
     .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
 
-    const splitCommand = content.split(" ");
+    const splitCommand = msg.content.split(" ");
 
     if (splitCommand[0].includes(this.prefix)) {
-      const command = splitCommand[0].split("/")[1];
+      const commandNameSplitted = splitCommand[0].split("/");
+      const command = commandNameSplitted[1].toLowerCase();
+
       switch (command) {
         case "skip":
           this._skip();
