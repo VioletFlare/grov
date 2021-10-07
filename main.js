@@ -24,13 +24,13 @@ class GRBot {
     const channel = client.channels.cache.get(channelID);
 
     if (!channelID) {
-      return msg.channel.send("Per invitarmi entra prima nella voice chat.");
+      return msg.channel.send("To invite me, enter the voice chat first.");
     }
 
     const permissions = channel.permissionsFor(msg.client.user);
     if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
       return msg.channel.send(
-        "Ho bisogno di permessi per connettermi a questa voice chat."
+        "I need permission to connect to this voice chat."
       );
     } else if (!channel) {
       return console.error("The channel does not exist!");
@@ -52,7 +52,7 @@ class GRBot {
   }
 
   _disconnectFromVoice(msg) {
-    if(!msg.guild.me.voice.channel) return msg.channel.send("Non sono in un canale.");
+    if(!msg.guild.me.voice.channel) return msg.channel.send("I am not in a channel.");
 
     msg.guild.me.voice.channel.leave();
   }
@@ -126,35 +126,44 @@ class GRBot {
     return array;
   }
 
+  _startQueue(playlist, isPlaylistASingleURL) {
+    console.log(playlist);
+    const queueConstruct = {
+      textChannel: this.msg.channel,
+      voiceChannel: this.msg.member.voice.channel,
+      connection: this.connection,
+      songs: [],
+      volume: 5,
+      playing: true,
+    };
+    
+    this.queue.set(this.msg.guild.id, queueConstruct);
+
+    if (isPlaylistASingleURL) {
+      queueConstruct.songs.push(playlist);
+    } else {
+      let playlistItems = playlist.items;
+
+      if (this.shuffle) {
+        playlistItems = this._shuffle(playlist.items)
+      }
+  
+      for (let item of playlistItems) {
+        queueConstruct.songs.push(item.shortUrl);
+      }
+    }
+
+    this.serverQueue = this.queue.get(this.msg.guild.id);
+    this._play(this.msg.guild, this.serverQueue.songs[0]);
+  }
+
   _startPlaylist(msg, playlistURL, shuffle) {
     ytpl(playlistURL).then(
-      (playlist) => {
-        console.log(playlist);
-        const queueConstruct = {
-          textChannel: msg.channel,
-          voiceChannel: msg.member.voice.channel,
-          connection: this.connection,
-          songs: [],
-          volume: 5,
-          playing: true,
-        };
-        
-        this.queue.set(msg.guild.id, queueConstruct);
-
-        let playlistItems = playlist.items;
-
-        if (shuffle) {
-          playlistItems = this._shuffle(playlist.items)
-        }
-        
-        for (let item of playlistItems) {
-          queueConstruct.songs.push(item.shortUrl);
-        }
-
-        this.serverQueue = this.queue.get(msg.guild.id);
-        this._play(msg.guild, this.serverQueue.songs[0]);
-      }
-    );
+      (playlist) => this._startQueue(playlist, false)
+    ).catch((e) => { //ytpl sometimes crashes with a cryptic numeric error during debug
+      const isSingleVideo = e.message.includes("Unable to find a id in");
+      this._startQueue(playlistURL, isSingleVideo);
+    });
   }
 
   _interceptPlayCommand(splitCommand, msg, shuffle) {
