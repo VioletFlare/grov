@@ -2,6 +2,7 @@ const Discord = require("discord.js");
 const client = new Discord.Client();
 const ytdl = require("discord-ytdl-core");
 const ytpl = require('ytpl');
+const ytmpl = require('yt-mix-playlist');
 const keepAlive = require('./server.js');
 const config = require('./config.js');
 
@@ -140,10 +141,39 @@ class GRBot {
     this.queue.set(this.msg.guild.id, queueConstruct);
 
     if (isSingleVideo) {
+      console.log("Playing single song.")
       queueConstruct.songs.push(playlist);
-    } else if (isMix) {
 
+      this.serverQueue = this.queue.get(this.msg.guild.id);
+      this._play(this.msg.guild, this.serverQueue.songs[0]);
+    } else if (isMix) {
+      console.log("Playing mix.")
+      const mixURL = new URL(playlist);
+      const videoId = mixURL.searchParams.get("v");
+
+      const ytmplPromise = new Promise(async (resolve, reject) => {
+        const mixPlaylist = ytmpl(videoId);
+        resolve(mixPlaylist);
+      })
+
+      ytmplPromise.then(
+        playlist => {
+          let playlistItems = playlist.items;
+
+          if (this.shuffle) {
+            playlistItems = this._shuffle(playlist.items)
+          }
+      
+          for (let item of playlistItems) {
+            queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
+          }
+
+          this.serverQueue = this.queue.get(this.msg.guild.id);
+          this._play(this.msg.guild, this.serverQueue.songs[0]);
+        }
+      )
     } else {
+      console.log("Playing playlist.")
       let playlistItems = playlist.items;
 
       if (this.shuffle) {
@@ -153,10 +183,12 @@ class GRBot {
       for (let item of playlistItems) {
         queueConstruct.songs.push(item.shortUrl);
       }
+
+      this.serverQueue = this.queue.get(this.msg.guild.id);
+      this._play(this.msg.guild, this.serverQueue.songs[0]);
     }
 
-    this.serverQueue = this.queue.get(this.msg.guild.id);
-    this._play(this.msg.guild, this.serverQueue.songs[0]);
+
   }
 
   _startPlaylist(msg, playlistURL, shuffle) {
