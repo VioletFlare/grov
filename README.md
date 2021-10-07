@@ -3,6 +3,10 @@
   <p align="center">GR Bot, a discord bot for music</p>
 </p>
 
+## Supported Platforms
+
+youtube
+
 ## Installation
 
 Launch
