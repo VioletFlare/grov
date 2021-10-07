@@ -42,6 +42,7 @@ class GRBot {
           filter: "audioonly",
           fmt: "mp3"
         }))
+        this._startPlaylist(this.msg, this.playlistURL, this.shuffle);
         console.log("Successfully connected.");
       }).catch(e => {
         console.error(e);
@@ -157,12 +158,13 @@ class GRBot {
   }
 
   _interceptPlayCommand(splitCommand, msg, shuffle) {
-    let playlist = this.playlists[splitCommand[2]];
+    let playlistURL = splitCommand[1];
+    this.msg = msg;
+    this.playlistURL = playlistURL;
+    this.shuffle = shuffle;
 
-    if(!msg.guild.me.voice.channel) {
-      msg.channel.send("Non sono in un canale.");
-    } else if (playlist) {
-      this._startPlaylist(msg, playlist, shuffle);
+    if (playlistURL) {
+      this._connectToVoice(msg);
     }
   }
 
@@ -190,14 +192,13 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
     )
     .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
 
-    const splitCommand = content.split("/");
+    const splitCommand = msg.content.split(" ");
 
     if (splitCommand[0].includes(this.prefix)) {
-      switch (splitCommand[1]) {
-        case "join":
-        case "start": 
-          this._connectToVoice(msg);
-        break;
+      const commandNameSplitted = splitCommand[0].split("/");
+      const command = commandNameSplitted[1].toLowerCase();
+
+      switch (command) {
         case "skip":
           this._skip();
         break;
