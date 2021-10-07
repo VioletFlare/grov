@@ -16,7 +16,7 @@ class GRBot {
   constructor() {
     this.prefix = "gr";
     this.queue = new Map();
-    this.githubPage = "https://www.github.com";
+    this.githubPage = "https://github.com/VioletFlare/grbot";
     this.emptyVideo = "https://www.youtube.com/watch?v=kvO_nHnvPtQ";
   }
 
@@ -282,6 +282,10 @@ if (isDev) {
 
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`)
+
+  client.user.setActivity(
+    `gr/help`, {type: 'PLAYING'}
+  );
 });
 
 client.on("message", msg => grBot.onMessage(msg));
