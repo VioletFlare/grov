@@ -129,7 +129,7 @@ class GRBot {
       if (err.message === 'Mixes not supported') {
 
       } else {
-        this._play(msg.guild, srcURL)
+        this._startPlaylist(srcURL, msg);
       }
     });
   }
@@ -147,7 +147,8 @@ class GRBot {
   }
 
   _startPlaylist(playlist, msg, shuffle) {
-    console.log(playlist);
+    const isPlaylistASingleURL = typeof playlist === 'string';
+
     const queueConstruct = {
       textChannel: msg.channel,
       voiceChannel: msg.member.voice.channel,
@@ -158,14 +159,18 @@ class GRBot {
 
     this.queue.set(msg.guild.id, queueConstruct);
 
-    let playlistItems = playlist.items;
+    if (isPlaylistASingleURL) {
+      queueConstruct.songs.push(playlist);
+    } else {
+      let playlistItems = playlist.items;
 
-    if (shuffle) {
-      playlistItems = this._shuffle(playlist.items)
-    }
-
-    for (let item of playlistItems) {
-      queueConstruct.songs.push(item.shortUrl);
+      if (shuffle) {
+        playlistItems = this._shuffle(playlist.items)
+      }
+  
+      for (let item of playlistItems) {
+        queueConstruct.songs.push(item.shortUrl);
+      }
     }
 
     this.serverQueue = this.queue.get(msg.guild.id);
