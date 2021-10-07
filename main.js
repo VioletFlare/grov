@@ -126,7 +126,7 @@ class GRBot {
     return array;
   }
 
-  _startQueue(playlist, isPlaylistASingleURL) {
+  _startQueue(playlist, isSingleVideo, isMix) {
     console.log(playlist);
     const queueConstruct = {
       textChannel: this.msg.channel,
@@ -139,8 +139,10 @@ class GRBot {
     
     this.queue.set(this.msg.guild.id, queueConstruct);
 
-    if (isPlaylistASingleURL) {
+    if (isSingleVideo) {
       queueConstruct.songs.push(playlist);
+    } else if (isMix) {
+
     } else {
       let playlistItems = playlist.items;
 
@@ -162,7 +164,8 @@ class GRBot {
       (playlist) => this._startQueue(playlist, false)
     ).catch((e) => { //ytpl sometimes crashes with a cryptic numeric error during debug
       const isSingleVideo = e.message.includes("Unable to find a id in");
-      this._startQueue(playlistURL, isSingleVideo);
+      const isMix = e.message.includes("Mixes not supported");
+      this._startQueue(playlistURL, isSingleVideo, isMix);
     });
   }
 
@@ -201,7 +204,8 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
     )
     .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
 
-    const splitCommand = msg.content.split(" ");
+    let splitCommand = msg.content.split(" ");
+    splitCommand = splitCommand.filter(string => string !== "" && string !== " ");
 
     if (splitCommand[0].includes(this.prefix)) {
       const commandNameSplitted = splitCommand[0].split("/");
