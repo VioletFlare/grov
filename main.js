@@ -3,6 +3,7 @@ const client = new Discord.Client();
 const ytdl = require("discord-ytdl-core");
 const ytpl = require('ytpl');
 const ytmpl = require('yt-mix-playlist');
+const yts = require( 'yt-search' );
 const keepAlive = require('./server.js');
 const config = require('./config.js');
 
@@ -190,7 +191,6 @@ class Grov {
       this._play(this.msg.guild, this.serverQueue.songs[0]);
     }
 
-
   }
 
   _startPlaylist(msg, playlistURL, shuffle) {
@@ -203,23 +203,51 @@ class Grov {
     });
   }
 
-  _interceptPlayCommand(splitCommand, msg, shuffle) {
-    let playlistURL = splitCommand[1];
-    this.msg = msg;
-    this.playlistURL = playlistURL;
-    this.shuffle = shuffle;
+  _lookForSongTitleOnYT(title) {
+    yts(title).then(r => {
+      let srcURL = r.videos[0].url;
+      this.playlistURL = srcURL;
 
-    if (playlistURL) {
-      this._connectToVoice(msg);
-    }
+      if (srcURL) {
+        this._connectToVoice(this.msg);
+      }
+    });
   }
 
-  _parseCommand(msg) {
+  _interceptPlayCommand(splitCommand, msg, shuffle) {
+    this.msg = msg;
+    this.shuffle = shuffle;
+
+    try { //check if it is a valid URL
+      new URL(splitCommand[1]);
+      let srcURL = splitCommand[1];
+      this.playlistURL = srcURL;
+
+      if (srcURL) {
+        this._connectToVoice(this.msg);
+      }
+    } catch (e) { //if it is not an URL then it is a title
+      const title = splitCommand[1];
+
+      this._lookForSongTitleOnYT(title);
+    }
+ 
+  }
+
+  _sendHelpEmbed(msg) {
     const usage = `
     \`\`\`
 Usage:
 gr/<command>
-gr/[help | skip | stop | \n    play <URL> | shuffle <URL>] 
+gr/[help | skip | stop | \n    play <URL | song title> | 
+    shuffle <URL | song title>] 
+\`\`\`
+    `
+    const examples = `
+    \`\`\`
+gr/play https://www.youtube.com/watch?v=JmijMVT3x-0 \n
+gr/play Angie - Dope \n
+gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
 \`\`\`
     `
     const embed = new Discord.MessageEmbed()
@@ -234,15 +262,29 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
       { name: 'stop', value: 'Stop the bot.', inline: true },
       { name: 'play', value: 'Play the song or the playlist in order.', inline: true },
       { name: 'shuffle', value: 'Play the song or play the playlist in random order.', inline: true },
+      { name: 'usage examples:', value: examples}
     )
     .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
 
-    let splitCommand = msg.content.split(" ");
-    splitCommand = splitCommand.filter(string => string !== "" && string !== " ");
-    const prefix = splitCommand[0] ? splitCommand[0].toLowerCase() : "";
+    msg.reply(embed);
+  }
+
+  _splitCommand(msg) {
+    const indexOfFirstSpaceOccurrence = msg.content.indexOf(" ");
+    const firstPartOfCommand = msg.content.substring(0, indexOfFirstSpaceOccurrence);
+    const lastPartOfCommand = msg.content.substring(indexOfFirstSpaceOccurrence + 1, msg.content.length);
+    const splittedCommand = [firstPartOfCommand, lastPartOfCommand];
+
+    return splittedCommand;
+  }
+
+  _parseCommand(msg) {
+    let splittedCommand = this._splitCommand(msg);
+    splittedCommand = splittedCommand.filter(string => string !== "" && string !== " ");
+    const prefix = splittedCommand[0] ? splittedCommand[0].toLowerCase() : "";
     
     if (prefix.includes(this.prefix)) {
-      const commandNameSplitted = splitCommand[0].split("/");
+      const commandNameSplitted = splittedCommand[0].split("/");
       const command = commandNameSplitted[1] ? commandNameSplitted[1].toLowerCase() : "";
 
       switch (command) {
@@ -253,13 +295,13 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
           this._disconnectFromVoice(msg);
         break;
         case "play":
-          this._interceptPlayCommand(splitCommand, msg);
+          this._interceptPlayCommand(splittedCommand, msg);
         break;
         case "shuffle": 
-          this._interceptPlayCommand(splitCommand, msg, true);
+          this._interceptPlayCommand(splittedCommand, msg, true);
         break;
         case "help":
-          msg.reply(embed);
+          this._sendHelpEmbed(msg);
         break;
       }
     }
