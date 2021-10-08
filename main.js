@@ -16,7 +16,7 @@ class Grov {
   constructor() {
     this.prefix = "gr";
     this.queue = new Map();
-    this.githubPage = "https://github.com/VioletFlare/grbot";
+    this.githubPage = "https://github.com/VioletFlare/grov";
     this.emptyVideo = "https://www.youtube.com/watch?v=kvO_nHnvPtQ";
   }
 
