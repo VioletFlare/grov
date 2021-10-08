@@ -12,7 +12,7 @@ if (process.env['REPLIT']) {
   (async () => keepAlive())();
 }
 
-class GRBot {
+class Grov {
   constructor() {
     this.prefix = "gr";
     this.queue = new Map();
@@ -84,6 +84,8 @@ class GRBot {
       this.queue.delete(guild.id);
       return;
     }
+
+    console.log(`Playing song: ${song}`)
 
     const stream = ytdl(song, {
       filter: "audioonly",
@@ -223,7 +225,7 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
     `
     const embed = new Discord.MessageEmbed()
     .setColor('#000000')
-    .setTitle("GR Bot")
+    .setTitle("Grov")
     .setURL(this.githubPage)
     .setDescription(usage)
     .setThumbnail('https://i.imgur.com/CVoMXzm.png')
@@ -272,7 +274,7 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
 
 }
 
-const grBot = new GRBot();
+const grov = new Grov();
 
 if (isDev) {
   client.login(config.TOKEN_DEV);
@@ -288,4 +290,4 @@ client.on("ready", () => {
   );
 });
 
-client.on("message", msg => grBot.onMessage(msg));
+client.on("message", msg => grov.onMessage(msg));
