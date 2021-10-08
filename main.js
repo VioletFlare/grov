@@ -65,8 +65,8 @@ class GRBot {
   _sendSongTitle(song) {
     ytdl.getBasicInfo(song).then(async info => {
       const embed = new Discord.MessageEmbed()
-      .setColor('#0099ff')
-      .setTitle(info.videoDetails.title)
+      .setColor('#000000')
+      .setTitle(`🔊   ${info.videoDetails.title}`)
       .setURL(song);
     
       if (this.songTitleMessage) {
