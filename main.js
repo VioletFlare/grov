@@ -240,11 +240,13 @@ gr/[help | skip | stop | \n    play <URL> | shuffle <URL>]
 
     let splitCommand = msg.content.split(" ");
     splitCommand = splitCommand.filter(string => string !== "" && string !== " ");
-    const prefix = splitCommand[0].toLowerCase();
+
+    
+    const prefix = splitCommand[0]?.toLowerCase();
 
     if (prefix.includes(this.prefix)) {
-      const commandNameSplitted = splitCommand[0].split("/");
-      const command = commandNameSplitted[1].toLowerCase();
+      const commandNameSplitted = splitCommand[0]?.split("/");
+      const command = commandNameSplitted[1]?.toLowerCase();
 
       switch (command) {
         case "skip":
