@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://i.imgur.com/CVoMXzm.png">
-  <p align="center">GR Bot, a discord bot for music</p>
+  <p align="center">Grov, a discord bot for music</p>
 </p>
 
 ## Supported Platforms
