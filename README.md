@@ -30,5 +30,5 @@ module.exports = {
 - **gr/help** - Show a help message.
 - **gr/skip** - Skip the song.
 - **gr/stop** - Stop the bot.
-- **gr/play** \<URL\> - Play the song or the playlist in order.
-- **gr/shuffle** \<URL\> - Play the song or play the playlist in random order.
+- **gr/play** \<URL\> | \<title\> - Play the song or the playlist in order.
+- **gr/shuffle** \<URL\> | \<title\> - Play the song or play the playlist in random order.
