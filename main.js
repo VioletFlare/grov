@@ -1,3 +1,7 @@
+//Sometimes crashes with a cryptic numeric error during debug: "Process exited with code 3221225477"
+//to resolve:
+//$ npm run clean 
+
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const ytdl = require("discord-ytdl-core");
@@ -51,7 +55,7 @@ class Grov {
       channel.join().then(connection => {
         this.connection = connection;
         this._patchVoiceBugWithEmptyFramePlay();
-        this._startPlaylist(this.msg, this.playlistURL, this.shuffle);
+        this._chooseProvider(this.playlistURL);
         console.log("Successfully connected.");
       }).catch(e => {
         console.error(e);
@@ -137,7 +141,7 @@ class Grov {
     return array;
   }
 
-  _startQueue(playlist, isSingleVideo, isMix) {
+  _startQueue(playlist, type) {
     console.log(playlist);
     const queueConstruct = {
       textChannel: this.msg.channel,
@@ -150,63 +154,81 @@ class Grov {
     
     this.queue.set(this.msg.guild.id, queueConstruct);
 
-    if (isSingleVideo) {
-      console.log("Playing single song.")
-      queueConstruct.songs.push(playlist);
+    switch (type) {
+      case "youtubeSingleVideo":
+        console.log("Playing single youtube song.")
+        queueConstruct.songs.push(playlist);
 
-      this.serverQueue = this.queue.get(this.msg.guild.id);
-      this._play(this.msg.guild, this.serverQueue.songs[0]);
-    } else if (isMix) {
-      console.log("Playing mix.")
-      const mixURL = new URL(playlist);
-      const videoId = mixURL.searchParams.get("v");
-
-      const ytmplPromise = new Promise(async (resolve, reject) => {
-        const mixPlaylist = ytmpl(videoId);
-        resolve(mixPlaylist);
-      })
-
-      ytmplPromise.then(
-        playlist => {
-          let playlistItems = playlist.items;
-
-          if (this.shuffle) {
-            playlistItems = this._shuffle(playlist.items)
-          }
-      
-          for (let item of playlistItems) {
-            queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
-          }
-
-          this.serverQueue = this.queue.get(this.msg.guild.id);
-          this._play(this.msg.guild, this.serverQueue.songs[0]);
-        }
-      )
-    } else {
-      console.log("Playing playlist.")
-      let playlistItems = playlist.items;
-
-      if (this.shuffle) {
-        playlistItems = this._shuffle(playlist.items)
-      }
+        this.serverQueue = this.queue.get(this.msg.guild.id);
+        this._play(this.msg.guild, this.serverQueue.songs[0]);
+      break;
+      case "youtubeMix":
+        console.log("Playing youtube mix.")
+        const mixURL = new URL(playlist);
+        const videoId = mixURL.searchParams.get("v");
   
-      for (let item of playlistItems) {
-        queueConstruct.songs.push(item.shortUrl);
-      }
-
-      this.serverQueue = this.queue.get(this.msg.guild.id);
-      this._play(this.msg.guild, this.serverQueue.songs[0]);
+        const ytmplPromise = new Promise(async (resolve, reject) => {
+          const mixPlaylist = ytmpl(videoId);
+          resolve(mixPlaylist);
+        })
+  
+        ytmplPromise.then(
+          playlist => {
+            let playlistItems = playlist.items;
+  
+            if (this.shuffle) {
+              playlistItems = this._shuffle(playlist.items)
+            }
+        
+            for (let item of playlistItems) {
+              queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
+            }
+  
+            this.serverQueue = this.queue.get(this.msg.guild.id);
+            this._play(this.msg.guild, this.serverQueue.songs[0]);
+          }
+        )
+      break;
+      case "youtubePlaylist":
+        console.log("Playing youtube playlist.")
+        let playlistItems = playlist.items;
+  
+        if (this.shuffle) {
+          playlistItems = this._shuffle(playlist.items)
+        }
+    
+        for (let item of playlistItems) {
+          queueConstruct.songs.push(item.shortUrl);
+        }
+  
+        this.serverQueue = this.queue.get(this.msg.guild.id);
+        this._play(this.msg.guild, this.serverQueue.songs[0]);
+      break;
     }
-
   }
 
-  _startPlaylist(msg, playlistURL, shuffle) {
-    ytpl(playlistURL).then(
-      (playlist) => this._startQueue(playlist, false)
-    ).catch((e) => { //ytpl sometimes crashes with a cryptic numeric error during debug
+  _chooseProvider(srcURL) {
+    let provider = "";
+
+    switch (provider) {
+
+    }
+
+    ytpl(srcURL).then(
+      (playlist) => this._startQueue(playlist, "youtubePlaylist")
+    ).catch((e) => { 
       const isSingleVideo = e.message.includes("Unable to find a id in");
       const isMix = e.message.includes("Mixes not supported");
-      this._startQueue(playlistURL, isSingleVideo, isMix);
+
+      let type = "";
+
+      if (isSingleVideo) {
+        type = "youtubeSingleVideo";
+      } else if (isMix) {
+        type = "youtubeMix";
+      }
+
+      this._startQueue(srcURL, type);
     });
   }
 
