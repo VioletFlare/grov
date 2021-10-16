@@ -6,6 +6,7 @@ const ytmpl = require('yt-mix-playlist');
 const yts = require( 'yt-search' );
 const keepAlive = require('./server.js');
 const config = require('./config.js');
+const Readable = require("stream").Readable;
 
 const isDev = process.argv.includes("--dev");
 
@@ -13,12 +14,22 @@ if (process.env['REPLIT']) {
   (async () => keepAlive())();
 }
 
+class Silence extends Readable {
+  _read() {
+    this.push(Buffer.from([0xF8, 0xFF, 0xFE]));
+  }
+}
+
 class Grov {
   constructor() {
     this.prefix = "gr";
     this.queue = new Map();
     this.githubPage = "https://github.com/VioletFlare/grov";
-    this.emptyVideo = "https://www.youtube.com/watch?v=kvO_nHnvPtQ";
+  }
+
+  _patchVoiceBugWithEmptyFramePlay() {
+    const emptyFrame = new Silence();
+    this.connection.play(emptyFrame);
   }
 
   _connectToVoice(msg) {
@@ -39,11 +50,7 @@ class Grov {
     } else {
       channel.join().then(connection => {
         this.connection = connection;
-        this.connection.play(ytdl(this.emptyVideo,
-        {
-          filter: "audioonly",
-          fmt: "mp3"
-        }))
+        this._patchVoiceBugWithEmptyFramePlay();
         this._startPlaylist(this.msg, this.playlistURL, this.shuffle);
         console.log("Successfully connected.");
       }).catch(e => {
