@@ -7,10 +7,11 @@ const client = new Discord.Client();
 const ytdl = require("discord-ytdl-core");
 const ytpl = require('ytpl');
 const ytmpl = require('./lib/yt-mix-playlist');
-const yts = require( 'yt-search' );
+const yts = require('yt-search');
 const keepAlive = require('./server.js');
 const config = require('./config.js');
 const Readable = require("stream").Readable;
+const youtubeify = require('./lib/youtubeify');
 
 const isDev = process.argv.includes("--dev");
 
@@ -141,9 +142,9 @@ class Grov {
     return array;
   }
 
-  _startYoutubeSingleVideoQueue(queueConstruct, playlist) {
+  _startYoutubeSingleVideoQueue(queueConstruct, srcURL) {
     console.log("Playing single youtube song.")
-    queueConstruct.songs.push(playlist);
+    queueConstruct.songs.push(srcURL);
 
     this.serverQueue = this.queue.get(this.msg.guild.id);
     this._play(this.msg.guild, this.serverQueue.songs[0]);
@@ -193,8 +194,15 @@ class Grov {
     this._play(this.msg.guild, this.serverQueue.songs[0]);
   }
 
-  _startQueue(playlist, type) {
-    console.log(playlist);
+  _startSpotifyTrackOnYoutube(queueConstruct, src) {
+    youtubeify(src).then(youtubeUrl => {
+      this._startYoutubeSingleVideoQueue(queueConstruct, youtubeUrl);
+    });
+  }
+
+  _startQueue(src, type) {
+    console.log(src);
+
     const queueConstruct = {
       textChannel: this.msg.channel,
       voiceChannel: this.msg.member.voice.channel,
@@ -208,13 +216,16 @@ class Grov {
 
     switch (type) {
       case "youtubeSingleVideo":
-        this._startYoutubeSingleVideoQueue(queueConstruct, playlist);
+        this._startYoutubeSingleVideoQueue(queueConstruct, src);
       break;
       case "youtubeMix":
-        this._startYoutubeMixQueue(queueConstruct, playlist);
+        this._startYoutubeMixQueue(queueConstruct, src);
       break;
       case "youtubePlaylist":
-        this._startYoutubePlaylistQueue(queueConstruct, playlist);
+        this._startYoutubePlaylistQueue(queueConstruct, src);
+      break;
+      case "spotifyTrack":
+        this._startSpotifyTrackOnYoutube(queueConstruct, src);
       break;
     }
   }
@@ -242,7 +253,7 @@ class Grov {
   }
 
   _useSpotify(srcURL) {
-
+    this._startQueue(srcURL, "spotifyTrack");
   }
 
   _chooseProvider(srcURL) {
