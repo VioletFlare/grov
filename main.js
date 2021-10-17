@@ -53,14 +53,21 @@ class Grov {
     } else if (!channel) {
       return console.error("The channel does not exist!");
     } else {
-      channel.join().then(connection => {
-        this.connection = connection;
-        this._patchVoiceBugWithEmptyFramePlay();
-        this._chooseProvider(this.playlistURL);
-        console.log("Successfully connected.");
-      }).catch(e => {
-        console.error(e);
-      });
+      const isAlreadyConnectedToVoice = client.voice.connections.size;
+
+      if (isAlreadyConnectedToVoice) {
+        this._chooseProvider(this.srcURL);
+      } else {
+        channel.join().then(connection => {
+          this.connection = connection;
+          this._patchVoiceBugWithEmptyFramePlay();
+          this._chooseProvider(this.srcURL);
+          console.log("Successfully connected.");
+        }).catch(e => {
+          console.error(e);
+        });
+      }
+
     }
 
   }
@@ -253,7 +260,20 @@ class Grov {
   }
 
   _useSpotify(srcURL) {
-    this._startQueue(srcURL, "spotifyTrack");
+    const isTrack = youtubeify.validateURL(srcURL, "track");
+    const isAlbum = youtubeify.validateURL(srcURL, "album")
+    const isPlaylist = youtubeify.validateURL(srcURL, "playlist");
+
+    if (isTrack) {
+      this._startQueue(srcURL, "spotifyTrack");
+    } else if (isAlbum) {
+      this._startQueue(srcuURL, "spotifyAlbum");
+    } else if (isPlaylist) {
+      this._startQueue(srcURL, "spotifyAlbum");
+    } else {
+      this.msg.channel.send("😵 Malformed spotify url, try checking for typos.");
+    }
+    
   }
 
   _chooseProvider(srcURL) {
@@ -267,6 +287,9 @@ class Grov {
       case "open.spotify.com":
         this._useSpotify(srcURL);
       break;
+      default:
+        this.msg.channel.send(`I don't support ${provider}.`)
+      break;
     }
 
   }
@@ -274,7 +297,7 @@ class Grov {
   _lookForSongTitleOnYT(title) {
     yts(title).then(r => {
       let srcURL = r.videos[0].url;
-      this.playlistURL = srcURL;
+      this.srcURL = srcURL;
 
       if (srcURL) {
         this._connectToVoice(this.msg);
@@ -289,7 +312,7 @@ class Grov {
     try { //check if it is a valid URL
       new URL(splitCommand[1]);
       let srcURL = splitCommand[1];
-      this.playlistURL = srcURL;
+      this.srcURL = srcURL;
 
       if (srcURL) {
         this._connectToVoice(this.msg);
