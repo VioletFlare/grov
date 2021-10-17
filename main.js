@@ -223,6 +223,7 @@ class Grov {
     ytpl(srcURL).then(
       (playlist) => this._startQueue(playlist, "youtubePlaylist")
     ).catch((e) => { 
+      const isShortYoutubeUrl = new URL(srcURL).hostname === "youtu.be";
       const isSingleVideo = e.message.includes("Unable to find a id in");
       const isMix = e.message.includes("Mixes not supported");
 
@@ -232,18 +233,28 @@ class Grov {
         type = "youtubeSingleVideo";
       } else if (isMix) {
         type = "youtubeMix";
+      } else if (isShortYoutubeUrl) {
+        type = "youtubeSingleVideo";
       }
 
       this._startQueue(srcURL, type);
     });
   }
 
+  _useSpotify(srcURL) {
+
+  }
+
   _chooseProvider(srcURL) {
     let provider = new URL(srcURL).hostname;
 
     switch (provider) {
+      case "youtu.be":
       case "www.youtube.com":
         this._useYoutube(srcURL);
+      break;
+      case "open.spotify.com":
+        this._useSpotify(srcURL);
       break;
     }
 
