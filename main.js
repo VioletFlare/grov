@@ -1,4 +1,4 @@
-//Sometimes crashes with a cryptic numeric error during debug: "Process exited with code 3221225477"
+//Sometimes crashes with a cryptic numeric error during debug (on nodev16): "Process exited with code 3221225477"
 //to resolve:
 //$ npm run clean 
 
@@ -141,6 +141,58 @@ class Grov {
     return array;
   }
 
+  _startYoutubeSingleVideoQueue(queueConstruct, playlist) {
+    console.log("Playing single youtube song.")
+    queueConstruct.songs.push(playlist);
+
+    this.serverQueue = this.queue.get(this.msg.guild.id);
+    this._play(this.msg.guild, this.serverQueue.songs[0]);
+  }
+
+  _startYoutubeMixQueue(queueConstruct, playlist) {
+    console.log("Playing youtube mix.")
+    const mixURL = new URL(playlist);
+    const videoId = mixURL.searchParams.get("v");
+
+    const ytmplPromise = new Promise(async (resolve, reject) => {
+      const mixPlaylist = ytmpl(videoId);
+      resolve(mixPlaylist);
+    })
+
+    ytmplPromise.then(
+      playlist => {
+        let playlistItems = playlist.items;
+
+        if (this.shuffle) {
+          playlistItems = this._shuffle(playlist.items)
+        }
+    
+        for (let item of playlistItems) {
+          queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
+        }
+
+        this.serverQueue = this.queue.get(this.msg.guild.id);
+        this._play(this.msg.guild, this.serverQueue.songs[0]);
+      }
+    )
+  }
+
+  _startYoutubePlaylistQueue(queueConstruct, playlist) {
+    console.log("Playing youtube playlist.")
+    let playlistItems = playlist.items;
+
+    if (this.shuffle) {
+      playlistItems = this._shuffle(playlist.items)
+    }
+
+    for (let item of playlistItems) {
+      queueConstruct.songs.push(item.shortUrl);
+    }
+
+    this.serverQueue = this.queue.get(this.msg.guild.id);
+    this._play(this.msg.guild, this.serverQueue.songs[0]);
+  }
+
   _startQueue(playlist, type) {
     console.log(playlist);
     const queueConstruct = {
@@ -156,64 +208,18 @@ class Grov {
 
     switch (type) {
       case "youtubeSingleVideo":
-        console.log("Playing single youtube song.")
-        queueConstruct.songs.push(playlist);
-
-        this.serverQueue = this.queue.get(this.msg.guild.id);
-        this._play(this.msg.guild, this.serverQueue.songs[0]);
+        this._startYoutubeSingleVideoQueue(queueConstruct, playlist);
       break;
       case "youtubeMix":
-        console.log("Playing youtube mix.")
-        const mixURL = new URL(playlist);
-        const videoId = mixURL.searchParams.get("v");
-  
-        const ytmplPromise = new Promise(async (resolve, reject) => {
-          const mixPlaylist = ytmpl(videoId);
-          resolve(mixPlaylist);
-        })
-  
-        ytmplPromise.then(
-          playlist => {
-            let playlistItems = playlist.items;
-  
-            if (this.shuffle) {
-              playlistItems = this._shuffle(playlist.items)
-            }
-        
-            for (let item of playlistItems) {
-              queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
-            }
-  
-            this.serverQueue = this.queue.get(this.msg.guild.id);
-            this._play(this.msg.guild, this.serverQueue.songs[0]);
-          }
-        )
+        this._startYoutubeMixQueue(queueConstruct, playlist);
       break;
       case "youtubePlaylist":
-        console.log("Playing youtube playlist.")
-        let playlistItems = playlist.items;
-  
-        if (this.shuffle) {
-          playlistItems = this._shuffle(playlist.items)
-        }
-    
-        for (let item of playlistItems) {
-          queueConstruct.songs.push(item.shortUrl);
-        }
-  
-        this.serverQueue = this.queue.get(this.msg.guild.id);
-        this._play(this.msg.guild, this.serverQueue.songs[0]);
+        this._startYoutubePlaylistQueue(queueConstruct, playlist);
       break;
     }
   }
 
-  _chooseProvider(srcURL) {
-    let provider = "";
-
-    switch (provider) {
-
-    }
-
+  _useYoutube(srcURL) {
     ytpl(srcURL).then(
       (playlist) => this._startQueue(playlist, "youtubePlaylist")
     ).catch((e) => { 
@@ -230,6 +236,17 @@ class Grov {
 
       this._startQueue(srcURL, type);
     });
+  }
+
+  _chooseProvider(srcURL) {
+    let provider = new URL(srcURL).hostname;
+
+    switch (provider) {
+      case "www.youtube.com":
+        this._useYoutube(srcURL);
+      break;
+    }
+
   }
 
   _lookForSongTitleOnYT(title) {
