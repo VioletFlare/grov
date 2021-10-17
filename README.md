@@ -3,6 +3,8 @@
   <p align="center">Grov, a discord bot for music</p>
 </p>
 
+![node-shield-image]
+
 ## Supported Platforms
 
 youtube
@@ -32,3 +34,5 @@ module.exports = {
 - **gr/stop** - Stop the bot.
 - **gr/play** \<URL\> | \<title\> - Play the song or the playlist in order.
 - **gr/shuffle** \<URL\> | \<title\> - Play the song or play the playlist in random order.
+
+[node-shield-image]: https://img.shields.io/static/v1?label=node&message=14.16.1&color=green
