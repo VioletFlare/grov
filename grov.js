@@ -32,6 +32,10 @@ class Grov {
     this.githubPage = "https://github.com/VioletFlare/grov";
   }
 
+  timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+ }
+
   _patchVoiceBugWithEmptyFramePlay() {
     const emptyFrame = new Silence();
     this.connection.play(emptyFrame);
@@ -98,38 +102,50 @@ class Grov {
     });
   }
 
-  _play(guild, song) {
-    if (!song) {
+  _handleYoutube403() {
+    //Trying to play the failed song after waiting a while.
+    console.log("Playback failed, retrying...");
+
+    this.timeout(250).then(
+      () => this._play()
+    )
+  }
+
+  _handlePlayError(error) {
+    console.log("Error caught in the voice connection.");
+    console.error(error); 
+
+    if (error.statusCode === 403) this._handleYoutube403();
+  } 
+
+  _play() {
+    const currentSongURL = this.serverQueue.songs[0];
+
+    if (!currentSongURL) {
       this.serverQueue.voiceChannel.leave();
-      this.queue.delete(guild.id);
+      this.queue.delete(this.msg.guild.id);
       return;
     }
 
-    console.log(`Playing song: ${song}`)
+    console.log(`Playing song: ${currentSongURL}`)
 
-    const stream = ytdl(song, {
-      filter: "audioonly",
-      fmt: "mp3"
-    });
-
-    stream.on('error', (err) => {
-      console.log("Stream error.");
-      console.error(err);
+    this.stream = ytdl(currentSongURL, {
+      quality: 'highestaudio',
+      fmt: 'mp3'
     });
 
     if (this.serverQueue.connection) {
       this.dispatcher = this.serverQueue.connection
-      .play(stream)
+      .play(this.stream)
       .on("finish", () => {
           this.serverQueue.songs.shift();
-          this._play(guild, this.serverQueue.songs[0]);
+          this._play();
       })
-      .on("error", error => { 
-        console.log("Error caught in the voice connection.");
-        console.error(error); 
-      });
+      .on(
+        "error", error => this._handlePlayError(error)
+      );
 
-      this._sendSongTitle(song);
+      this._sendSongTitle(currentSongURL);
 
       this.dispatcher.setVolumeLogarithmic(this.serverQueue.volume / 5);
     } else {
@@ -170,12 +186,7 @@ class Grov {
     const mixURL = new URL(playlist);
     const videoId = mixURL.searchParams.get("v");
 
-    const ytmplPromise = new Promise(async (resolve, reject) => {
-      const mixPlaylist = ytmpl(videoId);
-      resolve(mixPlaylist);
-    })
-
-    ytmplPromise.then(
+    ytmpl(videoId).then(
       playlist => {
         let playlistItems = playlist.items;
 
