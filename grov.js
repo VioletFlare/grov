@@ -112,6 +112,11 @@ class Grov {
       fmt: "mp3"
     });
 
+    stream.on('error', (err) => {
+      console.log("Stream error.");
+      console.error(err);
+    });
+
     if (this.serverQueue.connection) {
       this.dispatcher = this.serverQueue.connection
       .play(stream)
@@ -119,7 +124,10 @@ class Grov {
           this.serverQueue.songs.shift();
           this._play(guild, this.serverQueue.songs[0]);
       })
-      .on("error", error => console.error(error));
+      .on("error", error => { 
+        console.log("Error caught in the voice connection.");
+        console.error(error); 
+      });
 
       this._sendSongTitle(song);
 

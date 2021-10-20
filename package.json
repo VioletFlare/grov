@@ -4,8 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "node main.js",
-    "dev": "node main.js --dev",
+    "start": "node grov.js",
+    "dev": "node grov.js --dev",
     "clean": "npm cache clean --force"
   },
   "author": "/",
