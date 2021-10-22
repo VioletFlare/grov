@@ -34,7 +34,7 @@ class Grov {
 
   timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
- }
+  }
 
   _patchVoiceBugWithEmptyFramePlay() {
     const emptyFrame = new Silence();
@@ -111,11 +111,20 @@ class Grov {
     )
   }
 
+  _handleGoogleConnectionRefused() {
+    console.log("Connection refused, retrying...");
+
+    this.timeout(1000).then(
+      () => this._play()
+    )
+  }
+
   _handlePlayError(error) {
     console.log("Error caught in the voice connection.");
     console.error(error); 
 
     if (error.statusCode === 403) this._handleYoutube403();
+    if (error.code === 'ECONNREFUSED') this._handleGoogleConnectionRefused();
   } 
 
   _play() {
