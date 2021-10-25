@@ -426,6 +426,39 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
     }
   }
 
+  _shouldLeaveChannel(oldState) {
+    let amIAlone;
+
+    if (oldState.channel) {
+      const amIInChannel = oldState.channel.members.get(client.user.id);
+      const members = [...oldState.channel.members];
+      
+      const humans = members.filter(member => {
+       const isNotBot = !member[1].user.bot;
+  
+       return isNotBot;
+      });
+
+      amIAlone = !humans.length && amIInChannel;
+    } else {
+      amIAlone = false;
+    }
+
+    return amIAlone;
+  }
+
+  _tryLeaveVoiceChannel(oldState) {
+    const shouldLeave = this._shouldLeaveChannel(oldState);
+
+    if (shouldLeave) {
+      this.serverQueue.voiceChannel.leave();
+    }
+  }
+
+  onVoiceStateUpdate(oldState, newState) {
+    this._tryLeaveVoiceChannel(oldState);
+  }
+
   onMessage(msg) {
     if (!msg.author.bot) {
       this._parseCommand(msg);
@@ -450,5 +483,9 @@ client.on("ready", () => {
     `gr/help`, {type: 'PLAYING'}
   );
 });
+
+client.on(
+  "voiceStateUpdate", (oldState, newState) => grov.onVoiceStateUpdate(oldState, newState)
+);
 
 client.on("message", msg => grov.onMessage(msg));
