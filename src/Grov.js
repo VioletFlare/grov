@@ -307,6 +307,7 @@ class Grov {
     switch (provider) {
       case "youtu.be":
       case "www.youtube.com":
+      case "youtube.com":
         this._useYoutube(srcURL);
       break;
       case "open.spotify.com":
