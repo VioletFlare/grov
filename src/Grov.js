@@ -22,8 +22,8 @@ class Silence extends Readable {
 }
 
 class Grov {
-  constructor(client) {
-    this.client = client;
+  constructor(guild) {
+    this.guild = guild;
     this.prefix = "gr";
     this.queue = new Map();
     this.githubPage = "https://github.com/VioletFlare/grov";
@@ -40,7 +40,7 @@ class Grov {
 
   _connectToVoice(msg) {
     const channelID = msg.member.voice.channelID;
-    const channel = this.client.channels.cache.get(channelID);
+    const channel = this.guild.channels.cache.get(channelID);
 
     if (!channelID) {
       return msg.channel.send("To invite me, enter the voice chat first.");
@@ -54,7 +54,7 @@ class Grov {
     } else if (!channel) {
       return console.error("The channel does not exist!");
     } else {
-      const isAlreadyConnectedToVoice = this.client.voice.connections.size;
+      const isAlreadyConnectedToVoice = this.guild.voice?.connections?.size;
 
       if (isAlreadyConnectedToVoice) {
         this._chooseProvider(this.srcURL);
@@ -330,19 +330,30 @@ class Grov {
     });
   }
 
+  _isValidUrl(url) {
+    let isValid;
+
+    try {
+      new URL(url);
+      isValid = true;
+    } catch (e) {
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
   _interceptPlayCommand(splitCommand, msg, shuffle) {
     this.msg = msg;
     this.shuffle = shuffle;
 
-    try { //check if it is a valid URL
-      new URL(splitCommand[1]);
-      let srcURL = splitCommand[1];
-      this.srcURL = srcURL;
+    const isValidUrl = this._isValidUrl(splitCommand[1]);
 
-      if (srcURL) {
-        this._connectToVoice(this.msg);
-      }
-    } catch (e) { //if it is not an URL then it is a title
+    if (isValidUrl) {
+      this.srcURL = splitCommand[1];;
+
+      if (this.srcURL) this._connectToVoice(this.msg);
+    } else {
       const title = splitCommand[1];
 
       this._lookForSongTitleOnYT(title);
@@ -427,7 +438,7 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
     let amIAlone;
 
     if (oldState.channel) {
-      const amIInChannel = oldState.channel.members.get(this.client.user.id);
+      const amIInChannel = oldState.channel.members.get(this.guild.client.user.id);
       const members = [...oldState.channel.members];
       
       const humans = members.filter(member => {

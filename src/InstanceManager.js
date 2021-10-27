@@ -2,7 +2,7 @@ const Grov = require('./Grov.js');
 const config = require('../config.js');
 const Discord = require("discord.js");
 
-class SessionManager {
+class InstanceManager {
     
     constructor() {
         this.isDev = process.argv.includes("--dev");
@@ -68,6 +68,6 @@ class SessionManager {
 
 }
 
-module.exports = SessionManager;
+module.exports = InstanceManager;
 
 

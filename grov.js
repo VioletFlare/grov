@@ -1,3 +1,3 @@
-const SessionManager = require("./src/SessionManager.js");
+const InstanceManager = require("./src/InstanceManager.js");
 
-new SessionManager().init()
+new InstanceManager().init()
