@@ -120,6 +120,8 @@ class Grov {
     console.log("Error caught in the voice connection.");
     console.error(error); 
 
+    this._playEmptyFrame(); //try to prevent connection timeouts
+
     if (error.statusCode === 403) this._handleYoutube403();
     if (error.code === 'ECONNREFUSED') this._handleGoogleConnectionRefused();
   } 
