@@ -33,7 +33,7 @@ class Grov {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  _patchVoiceBugWithEmptyFramePlay() {
+  _playEmptyFrame() {
     const emptyFrame = new Silence();
     this.connection.play(emptyFrame);
   }
@@ -61,7 +61,7 @@ class Grov {
       } else {
         channel.join().then(connection => {
           this.connection = connection;
-          this._patchVoiceBugWithEmptyFramePlay();
+          this._playEmptyFrame(); // playing silence to patch voice bug 
           this._chooseProvider(this.srcURL);
           console.log("Successfully connected.");
         }).catch(e => {
