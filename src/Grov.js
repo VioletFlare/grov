@@ -10,6 +10,7 @@ const yts = require('yt-search');
 const keepAlive = require('../server.js');
 const Readable = require("stream").Readable;
 const youtubeify = require('../lib/youtubeify');
+const spotifyApi = require('spotify-url-info');
 
 if (process.env['REPLIT']) {
   (async () => keepAlive())();
@@ -234,6 +235,47 @@ class Grov {
     });
   }
 
+  _startSpotifyAlbumQueue(queueConstruct, src) {
+
+  }
+
+  _startSpotifyPlaylistQueue(queueConstruct, src) {
+    spotifyApi.getTracks(src).then(tracks => {
+      let queries = [];
+
+      tracks.forEach((track) => {
+        let query = ""
+
+        track.artists.forEach((artist) => {
+          query += `${artist.name} `;
+        })
+
+        query += track.name;
+        queries.push(query);
+      })
+
+      let youtubeSongPromises = [];
+
+      queries.forEach((query) => {
+        const ytsPromise = yts(query);
+
+        youtubeSongPromises.push(ytsPromise);
+      })
+
+      Promise.all(youtubeSongPromises).then(
+        (youtubeSearchResults) => {
+          youtubeSearchResults.forEach(searchResult => {
+            queueConstruct.songs.push(searchResult.videos[0].url);
+          })
+
+          this.serverQueue = this.queue.get(this.msg.guild.id);
+          this._play(this.msg.guild, this.serverQueue.songs[0]);
+        }
+      );
+      
+    })
+  }
+
   _startQueue(src, type) {
     console.log(src);
 
@@ -261,6 +303,13 @@ class Grov {
       case "spotifyTrack":
         this._startSpotifyTrackOnYoutube(queueConstruct, src);
       break;
+      case "spotifyAlbum":
+        this._startSpotifyAlbumQueue(queueConstruct, src);
+      break;
+      case "spotifyPlaylist":
+        this._startSpotifyPlaylistQueue(queueConstruct, src);
+      break;
+      
     }
   }
 
@@ -296,7 +345,7 @@ class Grov {
     } else if (isAlbum) {
       this._startQueue(srcuURL, "spotifyAlbum");
     } else if (isPlaylist) {
-      this._startQueue(srcURL, "spotifyAlbum");
+      this._startQueue(srcURL, "spotifyPlaylist");
     } else {
       this.msg.channel.send("😵 Malformed spotify url, try checking for typos.");
     }
