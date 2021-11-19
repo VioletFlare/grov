@@ -353,7 +353,7 @@ class Grov {
     const isValidUrl = this._isValidUrl(splitCommand[1]);
 
     if (isValidUrl) {
-      this.srcURL = splitCommand[1];;
+      this.srcURL = splitCommand[1].trim();
 
       if (this.srcURL) this._connectToVoice(this.msg);
     } else {
