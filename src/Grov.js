@@ -235,10 +235,6 @@ class Grov {
     });
   }
 
-  _startSpotifyAlbumQueue(queueConstruct, src) {
-
-  }
-
   _startSpotifyPlaylistQueue(queueConstruct, src) {
     spotifyApi.getTracks(src).then(tracks => {
       let queries = [];
@@ -304,12 +300,11 @@ class Grov {
         this._startSpotifyTrackOnYoutube(queueConstruct, src);
       break;
       case "spotifyAlbum":
-        this._startSpotifyAlbumQueue(queueConstruct, src);
+        this._startSpotifyPlaylistQueue(queueConstruct, src);
       break;
       case "spotifyPlaylist":
         this._startSpotifyPlaylistQueue(queueConstruct, src);
       break;
-      
     }
   }
 
@@ -343,7 +338,7 @@ class Grov {
     if (isTrack) {
       this._startQueue(srcURL, "spotifyTrack");
     } else if (isAlbum) {
-      this._startQueue(srcuURL, "spotifyAlbum");
+      this._startQueue(srcURL, "spotifyAlbum");
     } else if (isPlaylist) {
       this._startQueue(srcURL, "spotifyPlaylist");
     } else {
