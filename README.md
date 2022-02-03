@@ -7,7 +7,7 @@
 
 ## Supported Platforms
 
-youtube
+youtube, spotify
 
 ## Installation
 
