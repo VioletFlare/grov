@@ -308,7 +308,20 @@ class Grov {
     }
   }
 
+  _replaceUrl(srcURL) {
+    const isMobileUrl = new URL(srcURL).hostname === "m.youtube.com";
+    let url = srcURL;
+
+    if (isMobileUrl) {
+      url = url.replace("m.youtube.com", "youtube.com");
+    }
+
+    return url;
+  }
+
   _useYoutube(srcURL) {
+    srcURL = this._replaceUrl(srcURL);
+
     ytpl(srcURL).then(
       (playlist) => this._startQueue(playlist, "youtubePlaylist")
     ).catch((e) => { 
