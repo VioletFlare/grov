@@ -125,6 +125,17 @@ class Grov {
     )
   }
 
+  _handleYoutube410() {
+    console.log("Age restricted video skipping.");
+    this.msg.reply("This video is age restricted. Take your porn elsewhere 😡.");
+
+    this.serverQueue.songs.shift();
+    
+    this.timeout(250).then(
+      () => this._play()
+    )
+  }
+
   _handlePlayError(error) {
     console.log("Error caught in the voice connection.");
     console.error(error); 
@@ -134,6 +145,7 @@ class Grov {
     this._playEmptyFrame(); //try to prevent connection timeouts
 
     if (error.statusCode === 403) this._handleYoutube403();
+    if (error.statusCode === 410) this._handleYoutube410();
     if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') this._handleGoogleConnectionError();
   } 
 
