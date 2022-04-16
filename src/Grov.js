@@ -161,8 +161,8 @@ class Grov {
     console.log(`Playing song: ${currentSongURL}`)
 
     this.stream = ytdl(currentSongURL, {
-      quality: 'highestaudio',
-      fmt: 'mp3'
+      filter: "audioonly",
+      fmt: "mp3"
     });
 
     if (this.serverQueue.connection) {
