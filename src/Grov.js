@@ -26,8 +26,8 @@ class Grov {
   constructor(guild) {
     this.guild = guild;
     this.prefix = "gr";
-    this.queue = new Map();
     this.githubPage = "https://github.com/VioletFlare/grov";
+    this.serverQueue = null;
   }
 
   timeout(ms) {
@@ -37,6 +37,13 @@ class Grov {
   _playEmptyFrame() {
     const emptyFrame = new Silence();
     this.connection.play(emptyFrame);
+  }
+
+  _setConnectionEvents() {
+    this.connection.on("disconnect", () => {
+      this.serverQueue = null;
+      console.log("Disconnected from voice channel.")
+    })
   }
 
   _connectToVoice(msg) {
@@ -55,7 +62,7 @@ class Grov {
     } else if (!channel) {
       return console.error("The channel does not exist!");
     } else {
-      const isAlreadyConnectedToVoice = this.guild.voice?.connections?.size;
+      const isAlreadyConnectedToVoice = this.guild.voice?.connection?.voiceManager?.connections?.size;
 
       if (isAlreadyConnectedToVoice) {
         this._chooseProvider(this.srcURL);
@@ -64,6 +71,7 @@ class Grov {
           this.connection = connection;
           this._playEmptyFrame(); // playing silence to patch voice bug 
           this._chooseProvider(this.srcURL);
+          this._setConnectionEvents();
           console.log("Successfully connected.");
         }).catch(e => {
           console.error(e);
@@ -109,10 +117,21 @@ class Grov {
     )
   }
 
-  _handleGoogleConnectionRefused() {
-    console.log("Connection refused, retrying...");
+  _handleGoogleConnectionError() {
+    console.log("Connection refused/reset, retrying...");
 
     this.timeout(1000).then(
+      () => this._play()
+    )
+  }
+
+  _handleYoutube410() {
+    console.log("Age restricted video skipping.");
+    this.msg.reply("This video is age restricted. Take your porn elsewhere 😡.");
+
+    this.serverQueue.songs.shift();
+    
+    this.timeout(250).then(
       () => this._play()
     )
   }
@@ -121,35 +140,49 @@ class Grov {
     console.log("Error caught in the voice connection.");
     console.error(error); 
 
+    this.serverQueue.playing = false;
+
     this._playEmptyFrame(); //try to prevent connection timeouts
 
     if (error.statusCode === 403) this._handleYoutube403();
-    if (error.code === 'ECONNREFUSED') this._handleGoogleConnectionRefused();
+    if (error.statusCode === 410) this._handleYoutube410();
+    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') this._handleGoogleConnectionError();
   } 
 
+  _playNextSong() {
+    this.serverQueue.songs.shift();
+    this.serverQueue.playing = false;
+    this._play();
+  }
+
   _play() {
+    if (this.serverQueue.playing) {
+      return;
+    } else {
+      this.serverQueue.playing = true;
+    }
+
     const currentSongURL = this.serverQueue.songs[0];
 
     if (!currentSongURL) {
       this.serverQueue.voiceChannel.leave();
-      this.queue.delete(this.msg.guild.id);
+      this.serverQueue = null;
       return;
     }
 
     console.log(`Playing song: ${currentSongURL}`)
 
     this.stream = ytdl(currentSongURL, {
-      quality: 'highestaudio',
-      fmt: 'mp3'
+      filter: "audioonly",
+      fmt: "mp3"
     });
 
     if (this.serverQueue.connection) {
       this.dispatcher = this.serverQueue.connection
       .play(this.stream)
-      .on("finish", () => {
-          this.serverQueue.songs.shift();
-          this._play();
-      })
+      .on(
+        "finish", () => this._playNextSong()
+      )
       .on(
         "error", error => this._handlePlayError(error)
       );
@@ -182,16 +215,15 @@ class Grov {
     return array;
   }
 
-  _startYoutubeSingleVideoQueue(queueConstruct, srcURL) {
-    console.log("Playing single youtube song.")
+  _startOrAddToYoutubeSingleVideoQueue(queueConstruct, srcURL) {
+    console.log("Song added to queue: " + srcURL)
     queueConstruct.songs.push(srcURL);
 
-    this.serverQueue = this.queue.get(this.msg.guild.id);
-    this._play(this.msg.guild, this.serverQueue.songs[0]);
+    this._play();
   }
 
-  _startYoutubeMixQueue(queueConstruct, playlist) {
-    console.log("Playing youtube mix.")
+  _startOrAddToYoutubeMixQueue(queueConstruct, playlist) {
+    console.log("Mix added to queue.")
     const mixURL = new URL(playlist);
     const videoId = mixURL.searchParams.get("v");
 
@@ -207,14 +239,13 @@ class Grov {
           queueConstruct.songs.push(`https://www.youtube.com/watch?v=${item.id}`);
         }
 
-        this.serverQueue = this.queue.get(this.msg.guild.id);
-        this._play(this.msg.guild, this.serverQueue.songs[0]);
+        this._play();
       }
     )
   }
 
-  _startYoutubePlaylistQueue(queueConstruct, playlist) {
-    console.log("Playing youtube playlist.")
+  _startOrAddToYoutubePlaylistQueue(queueConstruct, playlist) {
+    console.log("Playlist added to queue.")
     let playlistItems = playlist.items;
 
     if (this.shuffle) {
@@ -225,17 +256,16 @@ class Grov {
       queueConstruct.songs.push(item.shortUrl);
     }
 
-    this.serverQueue = this.queue.get(this.msg.guild.id);
-    this._play(this.msg.guild, this.serverQueue.songs[0]);
+    this._play();
   }
 
-  _startSpotifyTrackOnYoutube(queueConstruct, src) {
+  _startOrAddToSpotifyTrackOnYoutube(queueConstruct, src) {
     youtubeify(src).then(youtubeUrl => {
-      this._startYoutubeSingleVideoQueue(queueConstruct, youtubeUrl);
+      this._startOrAddToYoutubeSingleVideoQueue(queueConstruct, youtubeUrl);
     });
   }
 
-  _startSpotifyPlaylistQueue(queueConstruct, src) {
+  _startOrAddToSpotifyPlaylistQueue(queueConstruct, src) {
     spotifyApi.getTracks(src).then(tracks => {
       let queries = [];
 
@@ -264,46 +294,49 @@ class Grov {
             queueConstruct.songs.push(searchResult.videos[0].url);
           })
 
-          this.serverQueue = this.queue.get(this.msg.guild.id);
-          this._play(this.msg.guild, this.serverQueue.songs[0]);
+          this._play();
         }
       );
       
     })
   }
 
-  _startQueue(src, type) {
-    console.log(src);
+  _getQueueConstruct() {
+    if (!this.serverQueue) {
+      this.serverQueue = {
+        textChannel: this.msg.channel,
+        voiceChannel: this.msg.member.voice.channel,
+        connection: this.connection,
+        songs: [],
+        volume: 5,
+        playing: false,
+      };
+    }
 
-    const queueConstruct = {
-      textChannel: this.msg.channel,
-      voiceChannel: this.msg.member.voice.channel,
-      connection: this.connection,
-      songs: [],
-      volume: 5,
-      playing: true,
-    };
-    
-    this.queue.set(this.msg.guild.id, queueConstruct);
+    return this.serverQueue;
+  }
+
+  _startOrAddToQueue(src, type) {
+    const queueConstruct = this._getQueueConstruct();
 
     switch (type) {
       case "youtubeSingleVideo":
-        this._startYoutubeSingleVideoQueue(queueConstruct, src);
+        this._startOrAddToYoutubeSingleVideoQueue(queueConstruct, src);
       break;
       case "youtubeMix":
-        this._startYoutubeMixQueue(queueConstruct, src);
+        this._startOrAddToYoutubeMixQueue(queueConstruct, src);
       break;
       case "youtubePlaylist":
-        this._startYoutubePlaylistQueue(queueConstruct, src);
+        this._startOrAddToYoutubePlaylistQueue(queueConstruct, src);
       break;
       case "spotifyTrack":
-        this._startSpotifyTrackOnYoutube(queueConstruct, src);
+        this._startOrAddToSpotifyTrackOnYoutube(queueConstruct, src);
       break;
       case "spotifyAlbum":
-        this._startSpotifyPlaylistQueue(queueConstruct, src);
+        this._startOrAddToSpotifyPlaylistQueue(queueConstruct, src);
       break;
       case "spotifyPlaylist":
-        this._startSpotifyPlaylistQueue(queueConstruct, src);
+        this._startOrAddToSpotifyPlaylistQueue(queueConstruct, src);
       break;
     }
   }
@@ -323,7 +356,7 @@ class Grov {
     srcURL = this._replaceUrl(srcURL);
 
     ytpl(srcURL).then(
-      (playlist) => this._startQueue(playlist, "youtubePlaylist")
+      (playlist) => this._startOrAddToQueue(playlist, "youtubePlaylist")
     ).catch((e) => { 
       const isShortYoutubeUrl = new URL(srcURL).hostname === "youtu.be";
       const isSingleVideo = e.message.includes("Unable to find a id in");
@@ -339,7 +372,7 @@ class Grov {
         type = "youtubeSingleVideo";
       }
 
-      this._startQueue(srcURL, type);
+      this._startOrAddToQueue(srcURL, type);
     });
   }
 
@@ -349,11 +382,11 @@ class Grov {
     const isPlaylist = youtubeify.validateURL(srcURL, "playlist");
 
     if (isTrack) {
-      this._startQueue(srcURL, "spotifyTrack");
+      this._startOrAddToQueue(srcURL, "spotifyTrack");
     } else if (isAlbum) {
-      this._startQueue(srcURL, "spotifyAlbum");
+      this._startOrAddToQueue(srcURL, "spotifyAlbum");
     } else if (isPlaylist) {
-      this._startQueue(srcURL, "spotifyPlaylist");
+      this._startOrAddToQueue(srcURL, "spotifyPlaylist");
     } else {
       this.msg.channel.send("😵 Malformed spotify url, try checking for typos.");
     }
@@ -450,9 +483,10 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
       { name: 'stop', value: 'Stop the bot.', inline: true },
       { name: 'play', value: 'Play the song or the playlist in order.', inline: true },
       { name: 'shuffle', value: 'Play the song or play the playlist in random order.', inline: true },
+      { name: 'force', value: 'Play the song or the playlist forcefully, skipping the queue.', inline: true },
       { name: 'usage examples:', value: examples}
     )
-    .setFooter('Author: Barretta', 'https://i.imgur.com/4Ff284Z.jpg');
+    .setFooter('Author: \\ (Barretta)', 'https://i.imgur.com/lyv8H8C.png');
 
     msg.reply(embed);
   }
@@ -464,6 +498,12 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
     const splittedCommand = [firstPartOfCommand, lastPartOfCommand];
 
     return splittedCommand;
+  }
+
+  _forcePlay(splittedCommand, msg) {
+    this.serverQueue = null;
+
+    this._interceptPlayCommand(splittedCommand, msg);
   }
 
   _parseCommand(msg) {
@@ -487,6 +527,9 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
         break;
         case "shuffle": 
           this._interceptPlayCommand(splittedCommand, msg, true);
+        break;
+        case "force":
+          this._forcePlay(splittedCommand, msg);
         break;
         case "help":
           this._sendHelpEmbed(msg);
