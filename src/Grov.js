@@ -120,9 +120,11 @@ class Grov {
   _handleGoogleConnectionError() {
     console.log("Connection refused/reset, retrying...");
 
-    this.timeout(1000).then(
-      () => this._play()
-    )
+    const seek = Math.floor(
+      (Date.now() - this.serverQueue.start) / 1000
+    );
+
+    this._play(seek);
   }
 
   _handleYoutube410() {
@@ -155,7 +157,7 @@ class Grov {
     this._play();
   }
 
-  _play() {
+  _play(seek) {
     if (this.serverQueue.playing) {
       return;
     } else {
@@ -179,7 +181,12 @@ class Grov {
 
     if (this.serverQueue.connection) {
       this.dispatcher = this.serverQueue.connection
-      .play(this.stream)
+      .play(
+        this.stream, { seek: seek ? seek : 0 }
+      )
+      .on(
+        "start", () => this.serverQueue.start = seek ? this.serverQueue.start : Date.now()
+      )
       .on(
         "finish", () => this._playNextSong()
       )
@@ -309,6 +316,7 @@ class Grov {
         connection: this.connection,
         songs: [],
         volume: 5,
+        start: 0,
         playing: false,
       };
     }
@@ -441,16 +449,15 @@ class Grov {
     this.msg = msg;
     this.shuffle = shuffle;
 
-    const isValidUrl = this._isValidUrl(splitCommand[1]);
+    const param = splitCommand[1];
+    const isValidUrl = this._isValidUrl(param);
 
     if (isValidUrl) {
-      this.srcURL = splitCommand[1].trim();
+      this.srcURL = param.trim();
 
       if (this.srcURL) this._connectToVoice(this.msg);
-    } else {
-      const title = splitCommand[1];
-
-      this._lookForSongTitleOnYT(title);
+    } else if (param) {
+      this._lookForSongTitleOnYT(param);
     }
  
   }
