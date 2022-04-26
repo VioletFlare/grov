@@ -176,7 +176,8 @@ class Grov {
 
     this.stream = ytdl(currentSongURL, {
       filter: "audioonly",
-      fmt: "mp3"
+      fmt: "mp3",
+      seek: seek ? seek : 0
     });
 
     if (this.serverQueue.connection) {
