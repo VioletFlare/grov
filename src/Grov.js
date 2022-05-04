@@ -3,18 +3,13 @@
 //$ npm run clean 
 
 const Discord = require("discord.js");
-const ytdl = require("discord-ytdl-core");
 const ytpl = require('ytpl');
 const ytmpl = require('../lib/yt-mix-playlist');
 const yts = require('yt-search');
-const keepAlive = require('../server.js');
 const Readable = require("stream").Readable;
 const youtubeify = require('../lib/youtubeify');
 const spotifyApi = require('spotify-url-info');
-
-if (process.env['REPLIT']) {
-  (async () => keepAlive())();
-}
+const yt = require("./YT.js");
 
 class Silence extends Readable {
   _read() {
@@ -92,12 +87,12 @@ class Grov {
     this.dispatcher.emit("finish");
   }
 
-  _sendSongTitle(song) {
-    ytdl.getBasicInfo(song).then(async info => {
+  _sendSongTitle(songURL) {
+    yt.getBasicInfo(songURL).then(async info => {
       const embed = new Discord.MessageEmbed()
       .setColor('#000000')
       .setTitle(`🔊   ${info.videoDetails.title}`)
-      .setURL(song);
+      .setURL(songURL);
     
       if (this.songTitleMessage) {
         this.songTitleMessage.edit(embed);
@@ -174,10 +169,7 @@ class Grov {
 
     console.log(`Playing song: ${currentSongURL}`)
 
-    this.stream = ytdl(currentSongURL, {
-      filter: "audioonly",
-      fmt: "mp3"
-    });
+    this.stream = yt.getStream(currentSongURL);
 
     if (this.serverQueue.connection) {
       this.dispatcher = this.serverQueue.connection
