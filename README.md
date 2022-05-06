@@ -35,4 +35,4 @@ module.exports = {
 - **gr/play** \<URL\> | \<title\> - Play the song or the playlist in order.
 - **gr/shuffle** \<URL\> | \<title\> - Play the song or play the playlist in random order.
 
-[node-shield-image]: https://img.shields.io/static/v1?label=node&message=14.16.1&color=green
+[node-shield-image]: https://img.shields.io/static/v1?label=node&message=16.8.0&color=green
