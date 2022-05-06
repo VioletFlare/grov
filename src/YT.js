@@ -6,6 +6,7 @@ class YT {
         let stream = ytdl(currentSongURL, {
             filter: 'audioonly',
             quality: 'highestaudio',
+            highWaterMark: 1 << 25
         });
 
         return stream;

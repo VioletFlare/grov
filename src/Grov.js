@@ -112,7 +112,7 @@ class Grov {
     )
   }
 
-  _handleGoogleConnectionError() {
+  _handleConnectionError() {
     console.log("Connection refused/reset, retrying...");
 
     const seek = Math.floor(
@@ -143,7 +143,7 @@ class Grov {
 
     if (error.statusCode === 403) this._handleYoutube403();
     if (error.statusCode === 410) this._handleYoutube410();
-    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') this._handleGoogleConnectionError();
+    if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') this._handleConnectionError();
   } 
 
   _playNextSong() {
