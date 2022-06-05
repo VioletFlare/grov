@@ -83,8 +83,12 @@ class Grov {
     msg.guild.me.voice.channel.leave();
   }
 
-  _skip() {
-    this.dispatcher.emit("finish");
+  _skip(msg) {
+    if (this.dispatcher) {
+      this.dispatcher.emit("finish");
+    } else {
+      this._disconnectFromVoice(msg);
+    }
   }
 
   _sendSongTitle(songURL) {
@@ -221,12 +225,31 @@ class Grov {
     this._play();
   }
 
+  _getVideoId(videoURL) {
+    const url = new URL(videoURL);
+    let videoId = url.searchParams.get("v");
+    
+    if (!videoId) {
+      const matchYoutubeAndParameters = /https:\/\/youtu\.be\/|(\?|&)[a-zA-Z0-9=]*/g;
+      videoId = videoURL.replace(matchYoutubeAndParameters, "");
+    } 
+
+    return videoId;
+  }
+
+  _getListId(videoURL) {
+    const url = new URL(videoURL);
+    let listId = url.searchParams.get("list");
+
+    return listId;
+  }
+
   _startOrAddToYoutubeMixQueue(queueConstruct, playlist) {
     console.log("Mix added to queue.")
-    const mixURL = new URL(playlist);
-    const videoId = mixURL.searchParams.get("v");
+    const videoId = this._getVideoId(playlist);
+    const listId = this._getListId(playlist);
 
-    ytmpl(videoId).then(
+    ytmpl(videoId, { playlistId: listId }).then(
       playlist => {
         let playlistItems = playlist.items;
 
@@ -393,6 +416,11 @@ class Grov {
     
   }
 
+  _useDefault(srcURL) {
+    let provider = new URL(srcURL).hostname;
+    this.msg.channel.send(`I don't support ${provider}.`)
+  }
+
   _chooseProvider(srcURL) {
     let provider = new URL(srcURL).hostname;
 
@@ -407,7 +435,7 @@ class Grov {
         this._useSpotify(srcURL);
       break;
       default:
-        this.msg.channel.send(`I don't support ${provider}.`)
+        this._useDefault(srcURL);
       break;
     }
 
@@ -516,7 +544,7 @@ gr/shuffle https://www.youtube.com/watch?v=JmijMVT3x-0&list=RDJmijMVT3x-0
 
       switch (command) {
         case "skip":
-          this._skip();
+          this._skip(msg);
         break;
         case "stop":
           this._disconnectFromVoice(msg);
