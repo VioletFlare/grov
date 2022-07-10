@@ -30,8 +30,10 @@ class InstanceManager {
     }
 
     _initSessions() {
-        if (!this.sessions.size) {
-            for (const [key, value] of this.client.guilds.cache.entries()) {
+        if (!this.sessions.size && this.client.guilds) {
+            const entries = this.client.guilds.cache.entries();
+
+            for (const [key, value] of entries) {
                 this.sessions.set(key, new Grov(value));
             }
         }

@@ -43,9 +43,9 @@ class Grov {
 
   _connectToVoice(msg) {
     const channelID = msg.member.voice.channelID;
-    const channel = this.guild.channels.cache.get(channelID);
+    const channel = this.guild.channels?.cache.get(channelID);
 
-    if (!channelID) {
+    if (!channelID && !channel) {
       return msg.channel.send("To invite me, enter the voice chat first.");
     }
 
